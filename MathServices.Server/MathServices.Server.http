@@ -1,0 +1,30 @@
+@serverHost = http://localhost:5156
+
+GET {{serverHost}}/weatherforecast/
+Accept: application/json
+
+###
+POST {{serverHost}}/SoapService.svc
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://tempuri.org/IWeatherSoapService/GetWeatherForecastSoap"
+
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <GetWeatherForecastSoap xmlns="http://tempuri.org/">
+            <index>10</index>
+        </GetWeatherForecastSoap>
+    </s:Body>
+</s:Envelope>
+
+###
+POST {{serverHost}}/SoapService.svc
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://tempuri.org/IWeatherSoapService/AddSummarySoap"
+
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <AddSummarySoap xmlns="http://tempuri.org/">
+            <summary>Apokaliptycznie</summary>
+        </AddSummarySoap>
+    </s:Body>
+</s:Envelope>
