@@ -11,7 +11,8 @@ builder.Services.AddServiceModelServices();
 builder.Services.AddServiceModelMetadata();
 builder.Services.AddSingleton<IServiceBehavior, UseRequestHeadersForMetadataAddressBehavior>();
 
-builder.Services.AddSingleton<MatrixLogic>(); 
+builder.Services.AddSingleton<MatrixLogic>();
+builder.Services.AddSingleton<MatrixSoapService>();
 
 var app = builder.Build();
 
@@ -93,8 +94,17 @@ app.MapGet("/api/matrix/download/chunk/{fileId}/{chunkIndex:int}", (string fileI
 
 app.UseServiceModel(serviceBuilder =>
 {
-    serviceBuilder.AddService<MatrixSoapService>(serviceOptions => { });
-    serviceBuilder.AddServiceEndpoint<MatrixSoapService, IMatrixSoapService>(new BasicHttpBinding(), "/MatrixSoap.svc");
+    serviceBuilder.AddService<MatrixSoapService>(serviceOptions =>
+    {
+        serviceOptions.DebugBehavior.IncludeExceptionDetailInFaults = true;
+    });
+    var serverBinding = new BasicHttpBinding
+    {
+        MaxReceivedMessageSize = int.MaxValue,
+        MaxBufferSize = int.MaxValue
+    };
+    serviceBuilder.AddServiceEndpoint<MatrixSoapService, IMatrixSoapService>(serverBinding, "/MatrixSoap.svc");
+    // serviceBuilder.AddServiceEndpoint<MatrixSoapService, IMatrixSoapService>(new BasicHttpBinding(), "/MatrixSoap.svc");
     
     var serviceMetadataBehavior = app.Services.GetRequiredService<ServiceMetadataBehavior>();
     serviceMetadataBehavior.HttpGetEnabled = true;

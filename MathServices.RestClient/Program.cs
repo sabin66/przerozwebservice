@@ -2,12 +2,16 @@
 
 double rowsPerChunk = 50;
 int maxRetries = 3;
-string projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-string matrixPath = Path.Combine(projectRoot, "A100.txt");
 string serverUrl = "http://localhost:5156";
+string baseDirectory = "/Users/norbertswistak/MathServicesSolution/MathServices.RestClient";
 
-string outputDirectory = Path.GetDirectoryName(matrixPath) ?? projectRoot;
-string outputPath = Path.Combine(outputDirectory, "Result.txt");
+
+string matrixPath = Path.Combine(baseDirectory, "A100.txt");
+
+string name = Guid.NewGuid().ToString().Substring(0, 4) + "_Result.txt";
+string outputPath = Path.Combine(baseDirectory, name);
+
+
 
 var (rows, cols, matrix) = MatrixFunc.ReadMatrixFromFile(matrixPath);
 Console.WriteLine($"Plik wczytany. Wymiary: {rows}x{cols}");
