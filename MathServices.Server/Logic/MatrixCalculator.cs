@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 namespace MathServices.Logic;
 
 public record ChunkResponse(int ChunkIndex, bool Ok, bool IsComplete, string? FileId, string Message);
-public record DownloadChunkResponse(byte[] Data, bool IsComplete);
+public record DownloadChunkResponse(bool Success, byte[] Data, bool IsComplete, string Message);
 public record InitDownloadResponse(bool Exists, long TotalSizeBytes, int ExpectedChunks, int ChunkSize, string Message);
+public record MultiplyLogicResponse(bool Success, string? ResultFileId, string Message);
 
 public class UploadSession
 {
@@ -50,7 +51,7 @@ public class MatrixLogic
     public ChunkResponse UploadChunk(string sessionId, int chunkIndex, int[][] rowsChunk)
     {
         if (!_activeUploads.TryGetValue(sessionId, out var session))
-            throw new ArgumentException("Nie znaleziono aktywnej sesji przesyłania o podanym ID.");
+            return new ChunkResponse(chunkIndex, false, false, null, "Nie znaleziono aktywnej sesji przesyłania o podanym ID.");
 
         lock (session.WriteLock)
         {
@@ -116,30 +117,39 @@ public class MatrixLogic
         }
     }
 
-    public string MultiplyMatrices(string idA, string idB)
+    public MultiplyLogicResponse MultiplyMatrices(string idA, string idB)
     {
-        int[][] A = GetMatrix(idA);
-        int[][] B = GetMatrix(idB);
-
-        int rowsA = A.Length, colsA = A[0].Length;
-        int rowsB = B.Length, colsB = B[0].Length;
-
-        if (colsA != rowsB) throw new InvalidOperationException("Niezgodne wymiary macierzy.");
-
-        int[][] C = new int[rowsA][];
-        for (int i = 0; i < rowsA; i++) C[i] = new int[colsB];
-
-        Parallel.For(0, rowsA, i =>
+        try
         {
-            for (int j = 0; j < colsB; j++)
-            {
-                int sum = 0;
-                for (int k = 0; k < colsA; k++) sum += A[i][k] * B[k][j];
-                C[i][j] = sum;
-            }
-        });
+            int[][] A = GetMatrix(idA);
+            int[][] B = GetMatrix(idB);
 
-        return SaveResultMatrix(C);
+            int rowsA = A.Length, colsA = A[0].Length;
+            int rowsB = B.Length, colsB = B[0].Length;
+
+            if (colsA != rowsB)
+                return new MultiplyLogicResponse(false, null, "Niezgodne wymiary macierzy.");
+
+            int[][] C = new int[rowsA][];
+            for (int i = 0; i < rowsA; i++) C[i] = new int[colsB];
+
+            Parallel.For(0, rowsA, i =>
+            {
+                for (int j = 0; j < colsB; j++)
+                {
+                    int sum = 0;
+                    for (int k = 0; k < colsA; k++) sum += A[i][k] * B[k][j];
+                    C[i][j] = sum;
+                }
+            });
+
+            string newFileId = SaveResultMatrix(C);
+            return new MultiplyLogicResponse(true, newFileId, "Mnożenie zakończone sukcesem.");
+        }
+        catch (Exception ex)
+        {
+            return new MultiplyLogicResponse(false, null, $"Błąd mnożenia: {ex.Message}");
+        }
     }
 
     private string SaveResultMatrix(int[][] matrix)
@@ -170,8 +180,7 @@ public class MatrixLogic
         string filePath = Path.Combine(_storageDirectory, fileId);
 
         if (!File.Exists(filePath))
-            return new InitDownloadResponse(false, 0, 0, 0, "Plik nie istnieje.");
-
+            return new InitDownloadResponse(false, 0, 0, _downloadChunkSize, $"Nie znaleziono pliku o ID: {fileId}");
         long size = new FileInfo(filePath).Length;
         int chunks = (int)Math.Ceiling((double)size / _downloadChunkSize);
 
@@ -182,14 +191,15 @@ public class MatrixLogic
     {
         string filePath = Path.Combine(_storageDirectory, fileId);
 
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Nie znaleziono pliku.");
+        if (!File.Exists(filePath))
+            return new DownloadChunkResponse(false, Array.Empty<byte>(), false, "Nie znaleziono pliku paczki.");
 
         long totalFileSize = new FileInfo(filePath).Length;
-        
+
         long offset = (long)chunkIndex * _downloadChunkSize;
 
         if (offset >= totalFileSize)
-            return new DownloadChunkResponse(Array.Empty<byte>(), true);
+            return new DownloadChunkResponse(true, Array.Empty<byte>(), true, "Koniec pliku.");
 
         using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
@@ -200,7 +210,7 @@ public class MatrixLogic
             byte[] buffer = new byte[bytesToRead];
             int bytesRead = stream.Read(buffer, 0, bytesToRead);
 
-            return new DownloadChunkResponse(buffer, (offset + bytesRead >= totalFileSize));
+            return new DownloadChunkResponse(true, buffer, (offset + bytesRead >= totalFileSize), "Pobrano paczkę.");
         }
     }
 }

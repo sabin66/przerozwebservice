@@ -48,47 +48,46 @@ app.MapPost("/api/matrix/upload/chunk", (UploadChunkRequest req, MatrixLogic log
 
 app.MapPost("/api/matrix/multiply", (MultiplyRequest req, MatrixLogic logic) =>
 {
-    try
-    {
-        string resultFileId = logic.MultiplyMatrices(req.IdA, req.IdB);
-        return Results.Ok(new { ResultFileId = resultFileId });
-    }
-    catch (Exception ex) { return Results.BadRequest(new { Message = ex.Message }); }
+    var result = logic.MultiplyMatrices(req.IdA, req.IdB);
+    if (!result.Success)
+        return Results.BadRequest(new { Success = false, Message = result.Message });
+
+    return Results.Ok(new { Success = true, ResultFileId = result.ResultFileId, Message = result.Message });
 });
 
 app.MapGet("/api/matrix/download/init/{fileId}", (string fileId, MatrixLogic logic) =>
 {
     var logicResponse = logic.InitDownload(fileId);
-    
+
+    if (!logicResponse.Exists)
+        return Results.NotFound(new { Message = logicResponse.Message });
+
     var response = new InitDownloadResponseModel
     {
         Exists = logicResponse.Exists,
         TotalSizeBytes = logicResponse.TotalSizeBytes,
         ExpectedChunks = logicResponse.ExpectedChunks,
-        ChunkSize = logicResponse.ChunkSize, 
+        ChunkSize = logicResponse.ChunkSize,
         Message = logicResponse.Message
     };
 
-    if (!response.Exists) return Results.NotFound(response);
     return Results.Ok(response);
 });
 
 app.MapGet("/api/matrix/download/chunk/{fileId}/{chunkIndex:int}", (string fileId, int chunkIndex, MatrixLogic logic) =>
 {
-    try
+    var logicResponse = logic.DownloadChunk(fileId, chunkIndex);
+    if (!logicResponse.Success)
+        return Results.NotFound(new { Message = logicResponse.Message });
+
+    var response = new DownloadChunkResponseModel
     {
-        var logicResponse = logic.DownloadChunk(fileId, chunkIndex);
-        var response = new DownloadChunkResponseModel
-        {
-            Data = logicResponse.Data,
-            IsComplete = logicResponse.IsComplete
-        };
-        return Results.Ok(response);
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { Message = ex.Message });
-    }
+        Success = logicResponse.Success,
+        Data = logicResponse.Data,
+        IsComplete = logicResponse.IsComplete,
+        Message = logicResponse.Message
+    };
+    return Results.Ok(response);
 });
 
 
@@ -163,8 +162,18 @@ public class DownloadChunkRequest
 [DataContract]
 public class DownloadChunkResponseModel
 {
+    [DataMember] public bool Success { get; set; }
     [DataMember] public byte[] Data { get; set; } = Array.Empty<byte>();
     [DataMember] public bool IsComplete { get; set; }
+    [DataMember] public string Message { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class MultiplyResponseModel
+{
+    [DataMember] public bool Success { get; set; }
+    [DataMember] public string? ResultFileId { get; set; }
+    [DataMember] public string Message { get; set; } = string.Empty;
 }
 
 
@@ -173,7 +182,7 @@ public interface IMatrixSoapService
 {
     [OperationContract] string InitUploadSoap(InitUploadRequest request);
     [OperationContract] ChunkResponseModel UploadChunkSoap(UploadChunkRequest request);
-    [OperationContract] string MultiplySoap(MultiplyRequest request);
+    [OperationContract] MultiplyResponseModel MultiplySoap(MultiplyRequest request);
     [OperationContract] InitDownloadResponseModel InitDownloadSoap(InitDownloadRequest request);
     [OperationContract] DownloadChunkResponseModel DownloadChunkSoap(DownloadChunkRequest request);
 }
@@ -202,14 +211,21 @@ public class MatrixSoapService : IMatrixSoapService
         };
     }
 
-    public string MultiplySoap(MultiplyRequest req)
+    public MultiplyResponseModel MultiplySoap(MultiplyRequest req)
     {
-        return _logic.MultiplyMatrices(req.IdA, req.IdB);
+        var result = _logic.MultiplyMatrices(req.IdA, req.IdB);
+        return new MultiplyResponseModel
+        {
+            Success = result.Success,
+            ResultFileId = result.ResultFileId,
+            Message = result.Message
+        };
     }
 
     public InitDownloadResponseModel InitDownloadSoap(InitDownloadRequest req)
     {
         var logicResponse = _logic.InitDownload(req.FileId);
+    
         return new InitDownloadResponseModel
         {
             Exists = logicResponse.Exists,
@@ -225,8 +241,10 @@ public class MatrixSoapService : IMatrixSoapService
         var logicResponse = _logic.DownloadChunk(req.FileId, req.ChunkIndex);
         return new DownloadChunkResponseModel
         {
+            Success = logicResponse.Success,
             Data = logicResponse.Data,
-            IsComplete = logicResponse.IsComplete
+            IsComplete = logicResponse.IsComplete,
+            Message = logicResponse.Message
         };
     }
 }

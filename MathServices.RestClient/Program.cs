@@ -2,8 +2,12 @@
 
 double rowsPerChunk = 50;
 int maxRetries = 3;
-string matrixPath = Path.Combine(AppContext.BaseDirectory, "A100.txt");
+string projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+string matrixPath = Path.Combine(projectRoot, "A100.txt");
 string serverUrl = "http://localhost:5156";
+
+string outputDirectory = Path.GetDirectoryName(matrixPath) ?? projectRoot;
+string outputPath = Path.Combine(outputDirectory, "Result.txt");
 
 var (rows, cols, matrix) = MatrixFunc.ReadMatrixFromFile(matrixPath);
 Console.WriteLine($"Plik wczytany. Wymiary: {rows}x{cols}");
@@ -34,3 +38,13 @@ else
     Console.WriteLine("\nNIEPOWODZENIE: Mnozenie nie powiodlo sie.");
     return;
 }
+
+bool downloadSuccess = await MatrixFunc.DownloadMatrix(client, nextMatrixId, outputPath, maxRetries);
+if (downloadSuccess)
+{    
+    Console.WriteLine($"\nWynik pobrany i zapisany do pliku '{Path.GetFileName(outputPath)}'.");
+}
+else
+{    
+    Console.WriteLine("\nNIEPOWODZENIE: Pobieranie wyniku nie  powiodlo sie.");
+}   
