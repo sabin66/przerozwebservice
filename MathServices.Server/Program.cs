@@ -3,6 +3,7 @@ using CoreWCF.Configuration;
 using CoreWCF.Description;
 using System.Runtime.Serialization;
 using MathServices.Logic;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 
