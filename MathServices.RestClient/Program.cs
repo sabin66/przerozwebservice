@@ -6,10 +6,13 @@ string serverUrl = "http://localhost:5156";
 string baseDirectory = "/Users/norbertswistak/MathServicesSolution/MathServices.RestClient";
 
 
-string matrixPath = Path.Combine(baseDirectory, "A100.txt");
+string matrixPath = Path.Combine(baseDirectory, "A2000.txt");
 
 string name = Guid.NewGuid().ToString().Substring(0, 4) + "_Result.txt";
 string outputPath = Path.Combine(baseDirectory, name);
+
+string namef = Guid.NewGuid().ToString().Substring(0, 4) + "_Fractal.ppm";
+string outputPathF = Path.Combine(baseDirectory, namef);
 
 
 
@@ -52,3 +55,15 @@ else
 {    
     Console.WriteLine("\nNIEPOWODZENIE: Pobieranie wyniku nie  powiodlo sie.");
 }   
+
+
+// FRAKTAL
+
+
+string? fractalId = await FractalFunc.GenerateFractalAsync(client, 20000, 20000, 10);
+
+if (fractalId != null)
+{
+    
+    await FractalFunc.DownloadFractalAsync(client, fractalId, outputPathF, maxRetries);
+}

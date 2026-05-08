@@ -30,4 +30,5 @@ project.fragment.lock.json
 # Test results
 TestResults/
 *.txt
+*.ppm
 

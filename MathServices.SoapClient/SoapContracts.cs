@@ -85,3 +85,25 @@ public interface IMatrixSoapService
     [OperationContract] InitDownloadResponseModel InitDownloadSoap(InitDownloadRequest request);
     [OperationContract] DownloadChunkResponseModel DownloadChunkSoap(DownloadChunkRequest request);
 }
+[DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
+public class FractalRequest
+{
+    [DataMember] public int Width { get; set; }
+    [DataMember] public int Height { get; set; }
+    [DataMember] public int maxThreads { get; set; }
+}
+
+[DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
+public class FractalGenerateResponseModel
+{
+    [DataMember] public string? FileId { get; set; }
+    [DataMember] public string Message { get; set; } = string.Empty;
+}
+
+[ServiceContract]
+public interface IFractalSoapService
+{
+    [OperationContract] FractalGenerateResponseModel GenerateFractalSoap(FractalRequest request);
+    [OperationContract] InitDownloadResponseModel InitDownloadFractalSoap(InitDownloadRequest request);
+    [OperationContract] DownloadChunkResponseModel DownloadChunkFractalSoap(DownloadChunkRequest request);
+}

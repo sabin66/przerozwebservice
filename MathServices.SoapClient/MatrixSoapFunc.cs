@@ -160,6 +160,8 @@ public static class MatrixSoapFunc
                             {
                                 await fs.WriteAsync(chunkData.Data, 0, chunkData.Data.Length);
                                 success = true;
+                                int percentComplete = ((i + 1) * 100) / expectedChunks;
+                                Console.Write($"\rPostęp: {percentComplete}%");
                             }
                             else
                             {

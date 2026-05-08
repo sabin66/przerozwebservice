@@ -9,6 +9,7 @@ namespace MathServices.Logic;
 public class FractalLogic
 {
     private readonly string _storageDirectory = "FractalFiles";
+    private readonly int _downloadChunkSize = 65536;
 
     private const double CxMin = -2.5;
     private const double CxMax = 1.5;
@@ -99,7 +100,7 @@ public class FractalLogic
             }
         });
 
-        string id = $"fractal_{Guid.NewGuid():N}.ppm";
+        string id = $"fractal_{Guid.NewGuid()}.ppm";
         string filePath = Path.Combine(_storageDirectory, id);
 
         SavePpmFile(filePath, width, height, imageData);
@@ -117,6 +118,44 @@ public class FractalLogic
             writer.Write(System.Text.Encoding.ASCII.GetBytes(header));
             
             writer.Write(imageData);
+        }
+    }
+    public InitDownloadResponse InitDownload(string fileId)
+    {
+        string filePath = Path.Combine(_storageDirectory, fileId);
+
+        if (!File.Exists(filePath))
+            return new InitDownloadResponse(false, 0, 0, _downloadChunkSize, $"Nie znaleziono fraktala o ID: {fileId}");
+
+        long size = new FileInfo(filePath).Length;
+        int chunks = (int)Math.Ceiling((double)size / _downloadChunkSize);
+
+        return new InitDownloadResponse(true, size, chunks, _downloadChunkSize, "Fraktal gotowy do pobrania.");
+    }
+
+    public DownloadChunkResponse DownloadChunk(string fileId, int chunkIndex)
+    {
+        string filePath = Path.Combine(_storageDirectory, fileId);
+
+        if (!File.Exists(filePath))
+            return new DownloadChunkResponse(false, Array.Empty<byte>(), false, "Nie znaleziono pliku fraktala.");
+
+        long totalFileSize = new FileInfo(filePath).Length;
+        long offset = (long)chunkIndex * _downloadChunkSize;
+
+        if (offset >= totalFileSize)
+            return new DownloadChunkResponse(true, Array.Empty<byte>(), true, "Koniec pliku.");
+
+        using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            stream.Seek(offset, SeekOrigin.Begin);
+            long remainingBytes = totalFileSize - offset;
+            int bytesToRead = (int)Math.Min(_downloadChunkSize, remainingBytes);
+
+            byte[] buffer = new byte[bytesToRead];
+            int bytesRead = stream.Read(buffer, 0, bytesToRead);
+
+            return new DownloadChunkResponse(true, buffer, (offset + bytesRead >= totalFileSize), "Pobrano paczkę fraktala.");
         }
     }
 }

@@ -190,7 +190,9 @@ public static class MatrixFunc
                             {
                                 await fs.WriteAsync(chunkData.Data, 0, chunkData.Data.Length);
                                 success = true;
-                                Console.WriteLine("OK");
+                                int percentComplete = ((i + 1) * 100) / expectedChunks;
+                                Console.Write($"\rPostęp: {percentComplete}%"); 
+                                // await Task.Delay(500);
                             }
                             else
                             {
@@ -211,6 +213,7 @@ public static class MatrixFunc
                     }
                 }
             }
+            Console.WriteLine();
 
             return true;
         }

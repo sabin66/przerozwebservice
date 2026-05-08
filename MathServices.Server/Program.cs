@@ -14,6 +14,9 @@ builder.Services.AddSingleton<IServiceBehavior, UseRequestHeadersForMetadataAddr
 
 builder.Services.AddSingleton<MatrixLogic>();
 builder.Services.AddSingleton<MatrixSoapService>();
+builder.Services.AddSingleton<FractalLogic>();
+builder.Services.AddSingleton<FractalSoapService>();
+
 
 var app = builder.Build();
 
@@ -28,7 +31,9 @@ app.MapPost("/api/matrix/upload/init", (InitUploadRequest req, MatrixLogic logic
 {
     string sessionId = logic.InitUpload(req.TotalRows, req.TotalCols, req.ExpectedChunks);
     return Results.Ok(new { SessionId = sessionId });
-});
+})
+.Produces(StatusCodes.Status200OK)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapPost("/api/matrix/upload/chunk", (UploadChunkRequest req, MatrixLogic logic) =>
 {
@@ -47,7 +52,10 @@ app.MapPost("/api/matrix/upload/chunk", (UploadChunkRequest req, MatrixLogic log
         return Results.Ok(response);
     }
     catch (Exception ex) { return Results.Problem(ex.Message); }
-});
+})
+.Produces<ChunkResponseModel>(StatusCodes.Status200OK)
+.Produces<ChunkResponseModel>(StatusCodes.Status400BadRequest)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapPost("/api/matrix/multiply", (MultiplyRequest req, MatrixLogic logic) =>
 {
@@ -56,7 +64,10 @@ app.MapPost("/api/matrix/multiply", (MultiplyRequest req, MatrixLogic logic) =>
         return Results.BadRequest(new { Success = false, Message = result.Message });
 
     return Results.Ok(new { Success = true, ResultFileId = result.ResultFileId, Message = result.Message });
-});
+})
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapGet("/api/matrix/download/init/{fileId}", (string fileId, MatrixLogic logic) =>
 {
@@ -75,7 +86,10 @@ app.MapGet("/api/matrix/download/init/{fileId}", (string fileId, MatrixLogic log
     };
 
     return Results.Ok(response);
-});
+})
+.Produces<InitDownloadResponseModel>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status404NotFound)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapGet("/api/matrix/download/chunk/{fileId}/{chunkIndex:int}", (string fileId, int chunkIndex, MatrixLogic logic) =>
 {
@@ -91,21 +105,87 @@ app.MapGet("/api/matrix/download/chunk/{fileId}/{chunkIndex:int}", (string fileI
         Message = logicResponse.Message
     };
     return Results.Ok(response);
-});
+})
+.Produces<DownloadChunkResponseModel>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status404NotFound)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
+
+//FRAKTAL
+
+app.MapPost("/api/fractal/generate", (FractalRequest req, FractalLogic generator) =>
+{
+    try
+    {
+        string fileId = generator.GenerateMandelbrot(req.Width, req.Height, req.maxThreads);
+        return Results.Ok(new { FileId = fileId });
+    }
+    catch (Exception ex) { return Results.Problem(ex.Message); }
+})
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
+
+app.MapGet("/api/fractal/download/init/{fileId}", (string fileId, FractalLogic generator) =>
+{
+    var logicResponse = generator.InitDownload(fileId);
+
+    if (!logicResponse.Exists)
+        return Results.NotFound(new { Message = logicResponse.Message });
+
+    var response = new InitDownloadResponseModel
+    {
+        Exists = logicResponse.Exists,
+        TotalSizeBytes = logicResponse.TotalSizeBytes,
+        ExpectedChunks = logicResponse.ExpectedChunks,
+        ChunkSize = logicResponse.ChunkSize,
+        Message = logicResponse.Message
+    };
+
+    return Results.Ok(response);
+})
+.Produces<InitDownloadResponseModel>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status404NotFound)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
+
+app.MapGet("/api/fractal/download/chunk/{fileId}/{chunkIndex:int}", (string fileId, int chunkIndex, FractalLogic generator) =>
+{
+    var logicResponse = generator.DownloadChunk(fileId, chunkIndex);
+    if (!logicResponse.Success)
+        return Results.NotFound(new { Message = logicResponse.Message });
+
+    var response = new DownloadChunkResponseModel
+    {
+        Success = logicResponse.Success,
+        Data = logicResponse.Data,
+        IsComplete = logicResponse.IsComplete,
+        Message = logicResponse.Message
+    };
+    return Results.Ok(response);
+})
+.Produces<DownloadChunkResponseModel>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status404NotFound)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
+
 
 
 app.UseServiceModel(serviceBuilder =>
 {
-    serviceBuilder.AddService<MatrixSoapService>(serviceOptions =>
-    {
-        serviceOptions.DebugBehavior.IncludeExceptionDetailInFaults = true;
-    });
     var serverBinding = new BasicHttpBinding
     {
         MaxReceivedMessageSize = int.MaxValue,
         MaxBufferSize = int.MaxValue
     };
+    serviceBuilder.AddService<MatrixSoapService>(serviceOptions =>
+    {
+        serviceOptions.DebugBehavior.IncludeExceptionDetailInFaults = true;
+    });
     serviceBuilder.AddServiceEndpoint<MatrixSoapService, IMatrixSoapService>(serverBinding, "/MatrixSoap.svc");
+    serviceBuilder.AddService<FractalSoapService>(serviceOptions =>
+    {
+        serviceOptions.DebugBehavior.IncludeExceptionDetailInFaults = true;
+    });
+    serviceBuilder.AddServiceEndpoint<FractalSoapService, IFractalSoapService>(serverBinding, "/FractalSoap.svc");
+
     // serviceBuilder.AddServiceEndpoint<MatrixSoapService, IMatrixSoapService>(new BasicHttpBinding(), "/MatrixSoap.svc");
     
     var serviceMetadataBehavior = app.Services.GetRequiredService<ServiceMetadataBehavior>();
@@ -187,6 +267,19 @@ public class MultiplyResponseModel
     [DataMember] public string? ResultFileId { get; set; }
     [DataMember] public string Message { get; set; } = string.Empty;
 }
+[DataContract]
+public class FractalRequest
+{
+    [DataMember] public int Width { get; set; }
+    [DataMember] public int Height { get; set; }
+    [DataMember] public int maxThreads { get; set; }
+}
+[DataContract]
+public class FractalGenerateResponseModel
+{
+    [DataMember] public string? FileId { get; set; }
+    [DataMember] public string Message { get; set; } = string.Empty;
+}
 
 
 [ServiceContract]
@@ -249,6 +342,59 @@ public class MatrixSoapService : IMatrixSoapService
     }
 
     public DownloadChunkResponseModel DownloadChunkSoap(DownloadChunkRequest req)
+    {
+        var logicResponse = _logic.DownloadChunk(req.FileId, req.ChunkIndex);
+        return new DownloadChunkResponseModel
+        {
+            Success = logicResponse.Success,
+            Data = logicResponse.Data,
+            IsComplete = logicResponse.IsComplete,
+            Message = logicResponse.Message
+        };
+    }
+}
+
+[ServiceContract]
+public interface IFractalSoapService
+{
+    [OperationContract] FractalGenerateResponseModel GenerateFractalSoap(FractalRequest request);
+    [OperationContract] InitDownloadResponseModel InitDownloadFractalSoap(InitDownloadRequest request);
+    [OperationContract] DownloadChunkResponseModel DownloadChunkFractalSoap(DownloadChunkRequest request);
+}
+
+public class FractalSoapService : IFractalSoapService
+{
+    private readonly FractalLogic _logic;
+
+    public FractalSoapService(FractalLogic logic) { _logic = logic; }
+
+    public FractalGenerateResponseModel GenerateFractalSoap(FractalRequest req)
+    {
+        try
+        {
+            string fileId = _logic.GenerateMandelbrot(req.Width, req.Height, req.maxThreads);
+            return new FractalGenerateResponseModel { FileId = fileId, Message = "Sukces" };
+        }
+        catch (Exception ex)
+        {
+            return new FractalGenerateResponseModel { FileId = null, Message = ex.Message };
+        }
+    }
+
+    public InitDownloadResponseModel InitDownloadFractalSoap(InitDownloadRequest req)
+    {
+        var logicResponse = _logic.InitDownload(req.FileId);
+        return new InitDownloadResponseModel
+        {
+            Exists = logicResponse.Exists,
+            TotalSizeBytes = logicResponse.TotalSizeBytes,
+            ExpectedChunks = logicResponse.ExpectedChunks,
+            ChunkSize = logicResponse.ChunkSize,
+            Message = logicResponse.Message
+        };
+    }
+
+    public DownloadChunkResponseModel DownloadChunkFractalSoap(DownloadChunkRequest req)
     {
         var logicResponse = _logic.DownloadChunk(req.FileId, req.ChunkIndex);
         return new DownloadChunkResponseModel
