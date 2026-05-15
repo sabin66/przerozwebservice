@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathServices.Server", "MathServices.Server\MathServices.Server.csproj", "{5542F979-4419-4C7B-9216-42EDBB4F8731}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelTaskHub.Server", "ParallelTaskHub.Server\ParallelTaskHub.Server.csproj", "{5542F979-4419-4C7B-9216-42EDBB4F8731}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathServices.RestClient", "MathServices.RestClient\MathServices.RestClient.csproj", "{6D94E305-02A0-481E-AA3B-930F7C7C5D09}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelTaskHub.Client", "ParallelTaskHub.Client\ParallelTaskHub.Client.csproj", "{6D94E305-02A0-481E-AA3B-930F7C7C5D09}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathServices.SoapClient", "MathServices.SoapClient\MathServices.SoapClient.csproj", "{04060F8C-8CBB-476A-86FB-BC67DCD78684}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelTaskHub.SoapClient", "ParallelTaskHub.SoapClient\ParallelTaskHub.SoapClient.csproj", "{04060F8C-8CBB-476A-86FB-BC67DCD78684}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

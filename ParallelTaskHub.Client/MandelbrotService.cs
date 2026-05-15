@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
 
-namespace MathServices.RestClient;
+namespace ParallelTaskHub.Client;
 
-public static class FractalFunc
+public static class MandelbrotService
 {
-    public static async Task<string?> GenerateFractalAsync(HttpClient client, int width, int height, int maxThreads)
+    public static async Task<string?> StartFractalGeneration(HttpClient client, int width, int height, int maxThreads)
     {
         try
         {
@@ -18,7 +18,7 @@ public static class FractalFunc
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadFromJsonAsync<ErrorMessageResponse>();
-                Console.WriteLine($"Blad podczas generowania: {error?.Message ?? response.ReasonPhrase}");
+                Console.WriteLine($"Error while generation: {error?.Message ?? response.ReasonPhrase}");
                 return null;
             }
 
@@ -33,12 +33,12 @@ public static class FractalFunc
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Krytyczny blad podczas zlecania generowania: {ex.Message}");
+            Console.WriteLine($"Critical error while generation: {ex.Message}");
             return null;
         }
     }
 
-    public static async Task<bool> DownloadFractalAsync(HttpClient client, string fileId, string outputFilePath, int maxRetries)
+    public static async Task<bool> DownloadFractalImage(HttpClient client, string fileId, string outputFilePath, int maxRetries)
     {
         try
         {
@@ -46,7 +46,7 @@ public static class FractalFunc
             if (!initResponse.IsSuccessStatusCode)
             {
                 var error = await initResponse.Content.ReadFromJsonAsync<ErrorMessageResponse>();
-                Console.WriteLine($"\nSerwer odrzucil: {error?.Message ?? initResponse.ReasonPhrase}");
+                Console.WriteLine($"\nServer rejected: {error?.Message ?? initResponse.ReasonPhrase}");
                 return false;
             }
 
@@ -54,12 +54,12 @@ public static class FractalFunc
 
             if (initData == null || !initData.Exists)
             {
-                Console.WriteLine($"\nSerwer odrzucił żądanie pobierania: {initData?.Message}");
+                Console.WriteLine($"\nServer rejected download request: {initData?.Message}");
                 return false;
             }
 
             int expectedChunks = initData.ExpectedChunks;
-            Console.WriteLine($"Rozpoczęto pobieranie fraktala {fileId} (Paczek: {expectedChunks})...");
+            Console.WriteLine($"Fractal download started {fileId} (Chunks: {expectedChunks})...");
 
             using (FileStream fs = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write))
             {
@@ -87,11 +87,11 @@ public static class FractalFunc
                                 await fs.WriteAsync(chunkData.Data, 0, chunkData.Data.Length);
                                 success = true;
                                 int percentComplete = ((i + 1) * 100) / expectedChunks;
-                                Console.Write($"\rPostęp: {percentComplete}%");
+                                Console.Write($"\rProgress: {percentComplete}%");
                             }
                             else
                             {
-                                Console.WriteLine($"\nFailed to download chunk {i}. {chunkData?.Message ?? "Nieznany błąd."}");
+                                Console.WriteLine($"\nFailed to download chunk {i}. {chunkData?.Message ?? "Unknown error."}");
                             }
                         }
                         catch (Exception e)
@@ -109,7 +109,7 @@ public static class FractalFunc
                 }
             }
             Console.WriteLine();
-            Console.WriteLine("[FRACTAL] Zapisano plik pomyślnie na dysku!");
+            Console.WriteLine("Fractal - file has beed successfully saved on disc.!");
             return true;
         }
         catch (Exception ex)
@@ -119,5 +119,3 @@ public static class FractalFunc
         }
     }
 }
-
-public record FractalGenerateResponse(string FileId);

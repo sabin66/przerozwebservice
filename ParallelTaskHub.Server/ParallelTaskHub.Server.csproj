@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ParallelTaskHub.Server</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,10 +13,12 @@
     <PackageReference Include="CoreWCF.WebHttp" Version="1.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="1.2.30" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="MatrixFiles\" />
+    <Folder Include="Vault\Fractals\" />
+    <Folder Include="Vault\Matrices\" />
   </ItemGroup>
 
 </Project>

@@ -28,3 +28,12 @@ SOAPAction: "http://tempuri.org/IWeatherSoapService/AddSummarySoap"
         </AddSummarySoap>
     </s:Body>
 </s:Envelope>
+
+### Test połączenia SOAP
+POST http://localhost:5156/MatrixSoap.svc
+Content-Type: text/xml
+
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+    </s:Body>
+</s:Envelope>

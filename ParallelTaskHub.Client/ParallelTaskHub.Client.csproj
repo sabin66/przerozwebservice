@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>ParallelTaskHub.Client</AssemblyName>
+    <RootNamespace>ParallelTaskHub.Client</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

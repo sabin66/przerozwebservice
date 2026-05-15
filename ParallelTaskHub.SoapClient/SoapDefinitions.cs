@@ -1,33 +1,39 @@
 using System.Runtime.Serialization;
 using System.ServiceModel;
 
-namespace MathServices.SoapClient;
+namespace ParallelTaskHub.SoapClient;
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class InitUploadRequest
+public class MatrixInitRequest
 {
     [DataMember] public int TotalRows { get; set; }
     [DataMember] public int TotalCols { get; set; }
     [DataMember] public int ExpectedChunks { get; set; }
 }
 
+// NAPRAWA: int[][] nie jest obsługiwane przez DataContractSerializer w .NET 10 preview
+// (CoreWCF rzuca fault przy deserializacji tablicy postrzępionej).
+// Zamiast tego: płaska tablica int[] + wymiary ChunkRows/ChunkCols.
+// Serwer rekonstruuje int[][] w bramce SOAP przed przekazaniem do silnika.
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class UploadChunkRequest
+public class MatrixChunkRequest
 {
     [DataMember] public string SessionId { get; set; } = string.Empty;
     [DataMember] public int ChunkIndex { get; set; }
-    [DataMember] public int[][] RowsChunk { get; set; } = Array.Empty<int[]>();
+    [DataMember] public int ChunkRows { get; set; }
+    [DataMember] public int ChunkCols { get; set; }
+    [DataMember] public int[] RowsFlat { get; set; } = Array.Empty<int>();
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class MultiplyRequest
+public class MultiCalculationRequest
 {
     [DataMember] public string IdA { get; set; } = string.Empty;
     [DataMember] public string IdB { get; set; } = string.Empty;
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class ChunkResponseModel
+public class SoapChunkResponse
 {
     [DataMember] public int ChunkIndex { get; set; }
     [DataMember] public bool Ok { get; set; }
@@ -37,30 +43,30 @@ public class ChunkResponseModel
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class InitDownloadRequest
+public class DownloadSetupRequest
 {
     [DataMember] public string FileId { get; set; } = string.Empty;
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class InitDownloadResponseModel
+public class DownloadSetupResponse
 {
     [DataMember] public bool Exists { get; set; }
     [DataMember] public long TotalSizeBytes { get; set; }
     [DataMember] public int ExpectedChunks { get; set; }
-    [DataMember] public int ChunkSize { get; set; } 
+    [DataMember] public int ChunkSize { get; set; }
     [DataMember] public string Message { get; set; } = string.Empty;
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class DownloadChunkRequest
+public class ChunkDataRequest
 {
     [DataMember] public string FileId { get; set; } = string.Empty;
-    [DataMember] public int ChunkIndex { get; set; } 
+    [DataMember] public int ChunkIndex { get; set; }
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class DownloadChunkResponseModel
+public class ChunkDataResponse
 {
     [DataMember] public bool Success { get; set; }
     [DataMember] public byte[] Data { get; set; } = Array.Empty<byte>();
@@ -69,7 +75,7 @@ public class DownloadChunkResponseModel
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class MultiplyResponseModel
+public class MultiCalcResponse
 {
     [DataMember] public bool Success { get; set; }
     [DataMember] public string? ResultFileId { get; set; }
@@ -77,16 +83,17 @@ public class MultiplyResponseModel
 }
 
 [ServiceContract]
-public interface IMatrixSoapService
+public interface ISoapMatrixEngine
 {
-    [OperationContract] string InitUploadSoap(InitUploadRequest request);
-    [OperationContract] ChunkResponseModel UploadChunkSoap(UploadChunkRequest request);
-    [OperationContract] MultiplyResponseModel MultiplySoap(MultiplyRequest request);
-    [OperationContract] InitDownloadResponseModel InitDownloadSoap(InitDownloadRequest request);
-    [OperationContract] DownloadChunkResponseModel DownloadChunkSoap(DownloadChunkRequest request);
+    [OperationContract] string InitUploadSoap(MatrixInitRequest request);
+    [OperationContract] SoapChunkResponse UploadChunkSoap(MatrixChunkRequest request);
+    [OperationContract] MultiCalcResponse MultiplySoap(MultiCalculationRequest request);
+    [OperationContract] DownloadSetupResponse InitDownloadSoap(DownloadSetupRequest request);
+    [OperationContract] ChunkDataResponse DownloadChunkSoap(ChunkDataRequest request);
 }
+
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class FractalRequest
+public class MandelbrotTaskRequest
 {
     [DataMember] public int Width { get; set; }
     [DataMember] public int Height { get; set; }
@@ -94,16 +101,16 @@ public class FractalRequest
 }
 
 [DataContract(Namespace = "http://schemas.datacontract.org/2004/07/")]
-public class FractalGenerateResponseModel
+public class MandelbrotTaskResponse
 {
     [DataMember] public string? FileId { get; set; }
     [DataMember] public string Message { get; set; } = string.Empty;
 }
 
 [ServiceContract]
-public interface IFractalSoapService
+public interface ISoapMandelbrotEngine
 {
-    [OperationContract] FractalGenerateResponseModel GenerateFractalSoap(FractalRequest request);
-    [OperationContract] InitDownloadResponseModel InitDownloadFractalSoap(InitDownloadRequest request);
-    [OperationContract] DownloadChunkResponseModel DownloadChunkFractalSoap(DownloadChunkRequest request);
+    [OperationContract] MandelbrotTaskResponse GenerateFractalSoap(MandelbrotTaskRequest request);
+    [OperationContract] DownloadSetupResponse InitDownloadFractalSoap(DownloadSetupRequest request);
+    [OperationContract] ChunkDataResponse DownloadChunkFractalSoap(ChunkDataRequest request);
 }
